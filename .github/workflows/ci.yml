@@ -10,8 +10,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -26,20 +26,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout ocxkcd
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: ocxkcd
       - name: Checkout comic_editor
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: whatifrussian/comic_editor
           path: comic_editor
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: ocxkcd/pyproject.toml
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
