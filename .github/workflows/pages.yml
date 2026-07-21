@@ -19,12 +19,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout ocxkcd
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: ocxkcd
 
       - name: Checkout website sample images
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: whatifrussian/website
           path: website
