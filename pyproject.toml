@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ocxkcd"
+version = "0.1.0"
+description = "OCR, transcription, and comic_editor cleanup export for xkcd/what-if style images"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "what-if.ru tools" }]
+dependencies = [
+  "numpy>=1.26",
+  "opencv-python-headless>=4.9",
+  "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+cpu = [
+  "paddleocr>=3.0.0",
+  "paddlepaddle>=3.0.0",
+]
+ml = [
+  "torch>=2.2",
+]
+test = [
+  "pytest>=8.0",
+]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+ocxkcd = "ocxkcd.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ocxkcd"]
+artifacts = [
+  "src/ocxkcd/models/ocxkcd/*.pt",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src",
+  "tests",
+  "models/ocxkcd/*.pt",
+  "README.md",
+  "LICENSE",
+  "Dockerfile",
+  ".github/workflows/*.yml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+  "integration: tests that call external tools such as comic_editor CLI",
+]
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"

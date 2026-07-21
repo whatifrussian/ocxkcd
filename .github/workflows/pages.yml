@@ -1,0 +1,75 @@
+name: Pages Report
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ocxkcd
+        uses: actions/checkout@v6
+        with:
+          path: ocxkcd
+
+      - name: Checkout website sample images
+        uses: actions/checkout@v6
+        with:
+          repository: whatifrussian/website
+          path: website
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build report image
+        uses: docker/build-push-action@v7
+        with:
+          context: ocxkcd
+          tags: ocxkcd:pages
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate sample report
+        run: |
+          mkdir -p pages/site
+          docker run --rm \
+            -v "${{ github.workspace }}/website/content/uploads:/uploads:ro" \
+            -v "${{ github.workspace }}/pages/site:/output" \
+            ocxkcd:pages process \
+              /uploads/006-glass-half-empty \
+              /uploads/030-interplanetary-cessna \
+              --exclude-glob '*_ru.*' \
+              -o /output
+          printf '%s\n' 'ocxkcd.chtoes.li' > pages/site/CNAME
+          touch pages/site/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: pages/site
+
+  deploy:
+    needs: build-report
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

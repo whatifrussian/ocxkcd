@@ -1,0 +1,102 @@
+{
+  "version": 2,
+  "image": "arrest.png",
+  "clearedAreas": [
+    {
+      "type": "rect",
+      "x": 90,
+      "y": 93,
+      "width": 25,
+      "height": 25,
+      "transparent": true,
+      "color": null
+    },
+    {
+      "type": "rect",
+      "x": 127,
+      "y": 96,
+      "width": 32,
+      "height": 23,
+      "transparent": true,
+      "color": null
+    },
+    {
+      "type": "rect",
+      "x": 112,
+      "y": 98,
+      "width": 25,
+      "height": 17,
+      "transparent": true,
+      "color": null
+    },
+    {
+      "type": "rect",
+      "x": 121,
+      "y": 94,
+      "width": 29,
+      "height": 7,
+      "transparent": true,
+      "color": null
+    },
+    {
+      "type": "rect",
+      "x": 113,
+      "y": 95,
+      "width": 15,
+      "height": 8,
+      "transparent": true,
+      "color": null
+    },
+    {
+      "type": "rect",
+      "x": 123,
+      "y": 91,
+      "width": 30,
+      "height": 6,
+      "transparent": true,
+      "color": null
+    },
+    {
+      "type": "rect",
+      "x": 113,
+      "y": 93,
+      "width": 12,
+      "height": 4,
+      "transparent": true,
+      "color": null
+    },
+    {
+      "type": "rect",
+      "x": 114,
+      "y": 35,
+      "width": 5,
+      "height": 36,
+      "transparent": true,
+      "color": null
+    },
+    {
+      "type": "rect",
+      "x": 86,
+      "y": 92,
+      "width": 82,
+      "height": 29,
+      "transparent": true,
+      "color": null
+    }
+  ],
+  "texts": [
+    {
+      "id": "text_1783894092604",
+      "key": "caption_1",
+      "x": 97,
+      "y": 92,
+      "width": 55,
+      "height": 38,
+      "fontSize": 26,
+      "fontStyle": "semibold",
+      "color": "#000000",
+      "align": "left",
+      "lineHeight": 1.2
+    }
+  ]
+}

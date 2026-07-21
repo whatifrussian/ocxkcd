@@ -1,0 +1,12 @@
+.git
+.venv
+.pytest_cache
+dist
+build
+*.egg-info
+models/paddlex
+output
+_work
+__pycache__
+*.pyc
+
