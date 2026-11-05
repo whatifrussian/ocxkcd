@@ -34,7 +34,24 @@ def test_collect_images_can_exclude_translated_suffix(tmp_path: Path) -> None:
 
 
 def test_bundled_checkpoints_are_available() -> None:
+    cleaner = default_checkpoint(None, "conditioned-cleaner-v1.pt")
+    assert cleaner is not None and cleaner.exists()
     refiner = default_checkpoint(None, "refiner-smoke-seed1337.pt")
     fill = default_checkpoint(None, "fill-classifier-stratified-seed2026.pt")
     assert refiner is not None and refiner.exists()
     assert fill is not None and fill.exists()
+
+
+def test_cleaner_selection_and_explicit_refiner_off(tmp_path, monkeypatch):
+    from ocxkcd.cli import main
+    commands = []
+    monkeypatch.setattr("ocxkcd.cli.run_command", lambda command, **kwargs: commands.append(command))
+    source = tmp_path / "image.png"
+    source.write_bytes(b"manifest-only")
+    for mode in ("conditioned", "legacy"):
+        commands.clear()
+        main(["process", str(source), "-o", str(tmp_path / mode),
+              "--cleaner", mode, "--crop-refiner-combine", "off"])
+        export = commands[-1]
+        assert ("--cleaner-checkpoint" in export) == (mode == "conditioned")
+        assert export[export.index("--crop-refiner-combine") + 1] == "off"

@@ -46,6 +46,8 @@ include = [
   "src",
   "tests",
   "models/ocxkcd/*.pt",
+  "models/*.md",
+  "scripts/package-cleaner.py",
   "README.md",
   "LICENSE",
   "Dockerfile",

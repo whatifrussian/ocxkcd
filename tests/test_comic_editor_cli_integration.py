@@ -24,7 +24,13 @@ def comic_editor_dir() -> Path | None:
 
 
 @pytest.mark.integration
-def test_generated_export_renders_with_actual_comic_editor_cli(tmp_path: Path) -> None:
+@pytest.mark.parametrize("conditioned", [False, True])
+def test_generated_export_renders_with_actual_comic_editor_cli(tmp_path: Path, conditioned: bool) -> None:
+    from ocxkcd.cli import default_checkpoint
+    extra = []
+    if conditioned:
+        pytest.importorskip("torch")
+        extra = ["--cleaner-checkpoint", str(default_checkpoint(None, "conditioned-cleaner-v1.pt"))]
     editor = comic_editor_dir()
     if editor is None:
         pytest.skip("comic_editor checkout not found; set COMIC_EDITOR_DIR to run this integration test")
@@ -76,7 +82,7 @@ def test_generated_export_renders_with_actual_comic_editor_cli(tmp_path: Path) -
             "1",
             "--keep-single-char",
             "--refine-fill-from-interior",
-        ],
+        ] + extra,
         check=True,
     )
 
@@ -107,3 +113,21 @@ def test_generated_export_renders_with_actual_comic_editor_cli(tmp_path: Path) -
     original = Image.open(source).convert("RGBA")
     assert rendered.size == original.size
     assert rendered.getbbox() is not None
+    manifest = json.loads((output / "manifest.json").read_text())
+    assert manifest["records"][0]["cleaner"]["mode"] == ("conditioned" if conditioned else "legacy")
+    empty = tmp_path / "empty.json"
+    empty.write_text('{"caption_1": ""}')
+    empty_render = tmp_path / "empty.png"
+    subprocess.run([
+        "node", str(editor / "render_comic_image_skia.mjs"), str(output / "arrest"), "arrest",
+        "--scale", "1", "--resample", "native", "--font-dir", str(editor),
+        "--text", str(empty), "--output", str(empty_render),
+    ], check=True, capture_output=True)
+    import numpy as np
+    clean = Image.open(output / "arrest" / "arrest.clean.png").convert("RGBA")
+    mask = np.array(Image.open(output / "arrest" / "arrest.mask.png"))[..., 3] > 0
+    np.testing.assert_array_equal(np.array(clean)[~mask], np.array(original)[~mask])
+    for background in ("white", "black"):
+        def flatten(im):
+            return np.array(Image.alpha_composite(Image.new("RGBA", im.size, background), im)).astype(int)
+        assert np.abs(flatten(clean) - flatten(Image.open(empty_render).convert("RGBA"))).max() <= 2

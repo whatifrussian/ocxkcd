@@ -202,10 +202,15 @@ def process(args: argparse.Namespace) -> int:
     )
     if crop_refiner_checkpoint:
         export_cmd += ["--crop-refiner-checkpoint", str(crop_refiner_checkpoint)]
-        if args.crop_refiner_combine == "off":
-            export_cmd[export_cmd.index("--crop-refiner-combine") + 1] = "prefer"
     if fill_prior_checkpoint:
         export_cmd += ["--fill-prior-checkpoint", str(fill_prior_checkpoint)]
+    if args.cleaner == "conditioned":
+        checkpoint = args.cleaner_checkpoint or default_checkpoint(model_root, "conditioned-cleaner-v1.pt")
+        if checkpoint is None:
+            raise RuntimeError("Conditioned cleaner checkpoint missing; reinstall ocxkcd or use --cleaner legacy")
+        export_cmd += ["--cleaner-checkpoint", str(checkpoint), "--cleaner-device", args.cleaner_device]
+    elif args.cleaner_checkpoint:
+        raise ValueError("--cleaner-checkpoint cannot be used with --cleaner legacy")
     run_command(export_cmd, env=env)
 
     print(
@@ -318,7 +323,10 @@ def build_parser() -> argparse.ArgumentParser:
     process_parser.add_argument("--min-single-char-score", type=float, default=0.5)
     process_parser.add_argument("--keep-single-char", action=argparse.BooleanOptionalAction, default=True)
     process_parser.add_argument("--crop-refiner-checkpoint", type=Path)
-    process_parser.add_argument("--crop-refiner-combine", default="off", choices=("off", "intersect", "union", "prefer", "replace"))
+    process_parser.add_argument("--cleaner", default="conditioned", choices=("conditioned", "legacy"), help="Pixel cleaner; legacy disables the new postprocessing stage")
+    process_parser.add_argument("--cleaner-checkpoint", type=Path)
+    process_parser.add_argument("--cleaner-device", default="cpu", choices=("cpu", "cuda"))
+    process_parser.add_argument("--crop-refiner-combine", default="prefer", choices=("off", "intersect", "union", "prefer", "replace"))
     process_parser.add_argument("--crop-refiner-threshold", type=float, default=0.7)
     process_parser.add_argument("--crop-refiner-device", default="auto", choices=("auto", "cpu", "cuda"))
     process_parser.add_argument("--crop-refiner-dilate", type=int, default=0)

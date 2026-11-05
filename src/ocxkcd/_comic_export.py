@@ -1092,7 +1092,7 @@ def apply_fill_prior(bg: dict, prediction: dict | None, args: argparse.Namespace
         return {**bg, "fillPrior": {**prediction, "applied": False, "reason": "other keeps heuristic color"}}
     return {**bg, "fillPrior": {**prediction, "applied": False, "reason": "unsupported label"}}
 
-def export_record(record: dict, output_root: Path, args: argparse.Namespace, unet_prior: dict | None = None, crop_refiner: dict | None = None, fill_prior: dict | None = None) -> dict:
+def export_record(record: dict, output_root: Path, args: argparse.Namespace, unet_prior: dict | None = None, crop_refiner: dict | None = None, fill_prior: dict | None = None, cleaner=None) -> dict:
     source_path = Path(record["source"])
     with Image.open(source_path) as source_file:
         source = source_file.convert("RGBA")
@@ -1240,6 +1240,17 @@ def export_record(record: dict, output_root: Path, args: argparse.Namespace, une
             }
         )
 
+    cleaner_info = {"mode": "legacy"}
+    if cleaner is not None:
+        from ._conditioned_cleaner import refine
+        proposal = np.array(region_mask)[..., 3]
+        pixels, selected = refine(np.array(source), np.array(clean), proposal, exported, cleaner)
+        clean = Image.fromarray(pixels)
+        region_mask = Image.new("RGBA", source.size, "white")
+        region_mask.putalpha(Image.fromarray(selected.astype(np.uint8) * 255))
+        cleaner_info = {"mode": "conditioned", "threshold": cleaner[1]["threshold"],
+                        "changedPixels": int(np.count_nonzero(selected != (proposal > 0)))}
+
     clean.save(clean_out)
     region_mask.save(mask_out)
     make_mask_preview(region_mask, clean).save(mask_preview_out)
@@ -1263,6 +1274,7 @@ def export_record(record: dict, output_root: Path, args: argparse.Namespace, une
         "accepted": len(exported),
         "rejected": len(rejected),
         "detections": exported,
+        "cleaner": cleaner_info,
     }
 
 
@@ -1431,6 +1443,8 @@ def main() -> None:
     parser.add_argument("--dark-panel-min-dark-ratio", type=float, default=0.60)
     parser.add_argument("--meta-region-artifacts", default="regenerate", choices=("regenerate", "preserve"), help="For synthetic meta-region records, either run the detector pipeline or preserve existing reviewed clean/mask/meta artifacts.")
     parser.add_argument("--emit-rect-clears", action="store_true", help="Also emit old rectangle clear areas. Off by default because clean/mask are text-shaped.")
+    parser.add_argument("--cleaner-checkpoint", type=Path)
+    parser.add_argument("--cleaner-device", default="cpu", choices=("cpu", "cuda"))
     args = parser.parse_args()
 
     report = json.loads(args.report.read_text(encoding="utf-8"))
@@ -1438,7 +1452,13 @@ def main() -> None:
     unet_prior = load_unet_prior(args)
     crop_refiner = load_crop_refiner(args)
     fill_prior = load_fill_prior(args)
-    records = [export_record(record, args.output, args, unet_prior, crop_refiner, fill_prior) for record in report.get("records", [])]
+    cleaner = None
+    if args.cleaner_checkpoint:
+        from ._conditioned_cleaner import load_checkpoint, torch
+        torch.set_num_threads(4)
+        model, checkpoint = load_checkpoint(args.cleaner_checkpoint, args.cleaner_device)
+        cleaner = (model, checkpoint, args.cleaner_device)
+    records = [export_record(record, args.output, args, unet_prior, crop_refiner, fill_prior, cleaner) for record in report.get("records", [])]
     summary = {
         "images": len(records),
         "accepted": sum(record["accepted"] for record in records),

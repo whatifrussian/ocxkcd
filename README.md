@@ -56,7 +56,7 @@ docker run --rm \
 The Docker image is intended to be self-contained:
 
 - official PaddleOCR server detector/recognizer models are downloaded into `/models` during image build;
-- the small `ocxkcd` crop-refiner and fill-prior checkpoints are copied into `/models/ocxkcd`.
+- the small `ocxkcd` crop-refiner, fill-prior, and conditioned-cleaner checkpoints are copied into `/models/ocxkcd`.
 
 Do not mount an empty directory over `/models` unless you intentionally want to replace the baked models.
 
@@ -158,11 +158,45 @@ The cleanup refiner and fill-prior checkpoints use PyTorch if provided. Pass `--
 
 ## Model artifacts
 
-There are three classes of model artifacts:
+The default cleanup now includes the approved proposal-conditioned pixel cleaner
+(`conditioned-cleaner-v1.pt`, about 2 MB). It receives the original RGBA image and
+automatic cleanup proposal, refines individual pixels in overlapping OCR-line
+crops, and preserves the existing background-color/alpha estimates and transcription.
+It does not use manually corrected masks at inference. The checkpoint is bundled
+in the repository, Python wheel, and Docker image; no training checkout is needed.
+
+Use `--cleaner legacy` to reproduce the previous cleanup pipeline, or
+`--cleaner-device cuda` to run the new stage on GPU (CPU is the default).
+`--cleaner-checkpoint PATH` accepts a compatible replacement checkpoint.
+Install the `ml` extra when running outside Docker. Missing or incompatible
+checkpoints fail explicitly rather than silently changing the cleanup method.
+The legacy crop refiner remains part of proposal generation; its explicit
+`--crop-refiner-combine off` setting is now respected.
+
+Validation compared 40 full comics, including transparent/colored backgrounds,
+rotated text, and tables. On 19 held-out reviewed crops the exported-mask mean
+Dice increased from 0.934 to 0.956. These are a small, historical test set, not
+a guarantee for unseen comics; occasional artwork damage and letter remnants
+remain possible. OCR recognition and background estimation were not retrained.
+See [model provenance](models/CONDITIONED_CLEANER.md) for training and inference details.
+
+To check an existing approved 40-comic comparison report against the packaged
+model without rerunning OCR:
+
+```bash
+OCXKCD_CLEANER_REFERENCE=/path/to/approved-report/manifest.json pytest tests/test_cleaner_regression.py
+```
+
+The test compares masks and cleaned images pixel-for-pixel. Normal CI runs
+synthetic mask/alpha tests and both legacy and conditioned exports through
+the actual `comic_editor` renderer, with CPU PyTorch installed.
+
+There are four classes of model artifacts:
 
 1. PaddleOCR official detector/recognizer models. These are required for OCR unless PaddleOCR is allowed to download them at first run.
 2. `ocxkcd` crop-refiner checkpoint. Optional, but recommended for tighter text-shaped masks.
 3. `ocxkcd` fill-prior checkpoint. Optional, but recommended for white/black/transparent fill decisions.
+4. `ocxkcd` conditioned-cleaner checkpoint, enabled by default after proposal generation.
 
 The source repository commits our small `.pt` checkpoints. It does not commit the much larger official PaddleOCR model directories. Docker builds and GitHub runners can download/cache those official PaddleOCR models.
 
